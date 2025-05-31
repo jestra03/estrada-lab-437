@@ -1,11 +1,16 @@
-import type {IImageData} from "../MockAppData.ts";
-import { ImageGrid } from "./ImageGrid.tsx";
+import type {IApiImageData} from "../../../backend/src/shared/ApiImageData";
+import { ImageGrid } from "./ImageGrid";
 
 interface Props {
-    images: IImageData[];
+    images: IApiImageData[];
+    loading: boolean;
+    error: boolean;
 }
 
-export function AllImages({ images }: Props) {
+export function AllImages({ images, loading, error }: Props) {
+    if (loading) return <p>Loading images...</p>;
+    if (error) return <p>Failed to load images.</p>;
+
     return (
         <>
             <h2>All Images</h2>

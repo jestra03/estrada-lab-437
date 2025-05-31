@@ -1,17 +1,21 @@
 import { useParams } from "react-router-dom";
-import type {IImageData} from "../MockAppData.ts";
+import type {IApiImageData} from "../../../backend/src/shared/ApiImageData";
+import { ImageNameEditor } from "./ImageNameEditor";
 
 interface Props {
-    images: IImageData[];
+    images: IApiImageData[];
+    loading: boolean;
+    error: boolean;
+    setImages: React.Dispatch<React.SetStateAction<IApiImageData[]>>;
 }
 
-export function ImageDetails({ images }: Props) {
+export function ImageDetails({ images, loading, error, setImages }: Props) {
     const { imageId } = useParams();
     const image = images.find((img) => img.id === imageId);
 
-    if (!image) {
-        return <p>Image not found.</p>;
-    }
+    if (loading) return <p>Loading image...</p>;
+    if (error) return <p>Failed to load image data.</p>;
+    if (!image) return <p>Image not found.</p>;
 
     return (
         <div>
@@ -20,6 +24,11 @@ export function ImageDetails({ images }: Props) {
             <p>
                 Uploaded by: <strong>{image.author.username}</strong>
             </p>
+            <ImageNameEditor
+                initialValue={image.name}
+                imageId={image.id}
+                setImages={setImages}
+            />
         </div>
     );
 }
