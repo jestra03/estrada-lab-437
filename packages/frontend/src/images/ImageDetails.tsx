@@ -1,23 +1,25 @@
-import { useState } from "react";
-import { MainLayout } from "../MainLayout.tsx";
-import { fetchDataFromServer } from "../MockAppData.ts";
+import { useParams } from "react-router-dom";
+import type {IImageData} from "../MockAppData.ts";
 
-interface IImageDetailsProps {
-    imageId: string;
+interface Props {
+    images: IImageData[];
 }
 
-export function ImageDetails({ imageId }: IImageDetailsProps) {
-    const [imageData, _setImageData] = useState(fetchDataFromServer);
-    const image = imageData.find(image => image.id === imageId);
+export function ImageDetails({ images }: Props) {
+    const { imageId } = useParams();
+    const image = images.find((img) => img.id === imageId);
+
     if (!image) {
-        return <MainLayout><h2>Image not found</h2></MainLayout>;
+        return <p>Image not found.</p>;
     }
 
     return (
-        <MainLayout>
+        <div>
             <h2>{image.name}</h2>
-            <p>By {image.author.username}</p>
-            <img className="ImageDetails-img" src={image.src} alt={image.name} />
-        </MainLayout>
-    )
+            <img src={image.src} alt={image.name} style={{ maxWidth: "500px" }} />
+            <p>
+                Uploaded by: <strong>{image.author.username}</strong>
+            </p>
+        </div>
+    );
 }

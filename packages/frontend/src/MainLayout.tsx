@@ -1,13 +1,13 @@
-import React from "react";
+import { Outlet } from "react-router-dom";
 import { Header } from "./Header.tsx";
 
-export function MainLayout(props: React.PropsWithChildren<{}>) {
+export function MainLayout() {
     return (
-        <div>
+        <>
             <Header />
-            <div style={{padding: "0 2em"}}>
-                {props.children}
-            </div>
-        </div>
+            <main style={{ padding: "1em" }}>
+                <Outlet />
+            </main>
+        </>
     );
 }
