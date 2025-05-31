@@ -1,61 +1,62 @@
-// backend/src/index.ts
+// src/index.ts
 
-import express, { Request, Response } from "express";
-import dotenv from "dotenv";
+import express, { Request, Response } from "express";   // default & named imports
+import * as dotenv from "dotenv";
 import path from "path";
-import { ValidRoutes } from "./shared/ValidRoutes";
-import { connectMongo } from "./connectMongo";
+import { MongoClient } from "mongodb";
 import { ImageProvider } from "./ImageProvider";
+import { createImageRouter } from "./routes/imageRoutes";
 
 dotenv.config();
 
+// Validate required environment variables
+if (!process.env.MONGO_URL) {
+    console.error("Error: MONGO_URL environment variable is not set");
+    process.exit(1);
+}
+if (!process.env.STATIC_DIR) {
+    console.error("Error: STATIC_DIR environment variable is not set");
+    process.exit(1);
+}
+
 const PORT = process.env.PORT || 3000;
-const STATIC_DIR = process.env.STATIC_DIR || "public";
+const STATIC_DIR = process.env.STATIC_DIR;          // e.g. "../frontend/dist"
 const INDEX_HTML = path.join(STATIC_DIR, "index.html");
 
 const app = express();
-app.use(express.static(STATIC_DIR));
 
-app.get("/hello", (req: Request, res: Response) => {
-    res.send("Hello, World");
-});
+// 1) Parse JSON bodies for PATCH requests
+app.use(express.json());
 
-function waitDuration(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-(async () => {
-    const mongoClient = connectMongo();
+async function startServer() {
+    // 2) Connect to MongoDB
+    const mongoClient = new MongoClient(process.env.MONGO_URL!);
     await mongoClient.connect();
-    const dbName = process.env.DB_NAME!;
-    const db = mongoClient.db(dbName);
-    const collections = await db.listCollections().toArray();
-    console.log("Mongo connected. Collections:", collections.map(c => c.name));
-
     const imageProvider = new ImageProvider(mongoClient);
 
-    // API route using Mongo
-    app.get("/api/images", async (req, res) => {
-        await waitDuration(1000);
-        try {
-            const result = await imageProvider.getAllImagesDenormalized();
-            res.json(result);
-        } catch (err) {
-            console.error("Failed to fetch images:", err);
-            res.status(500).json({ error: "Failed to fetch images" });
+    // 3) Mount API routes under /api/images
+    app.use("/api/images", createImageRouter(imageProvider));
+
+    // 4) Serve static files from STATIC_DIR
+    app.use(express.static(STATIC_DIR));
+
+    // 5) SPA fallback: anything not starting with /api goes to index.html
+    app.get("*", (req: Request, res: Response) => {
+        if (req.path.startsWith("/api/")) {
+            // If it's an undefined API path, return 404
+            return res.status(404).json({ error: "API route not found" });
         }
+        // Otherwise, send index.html (for React Router)
+        return res.sendFile(INDEX_HTML, { root: process.cwd() });
     });
 
-    // SPA fallback
-    Object.values(ValidRoutes).forEach((route) => {
-        if (route.includes(":")) return;
-
-        app.get(route, (req, res) => {
-            res.sendFile(INDEX_HTML, { root: process.cwd() });
-        });
-    });
-
+    // 6) Start listening
     app.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
+        console.log(`Server listening at http://localhost:${PORT}`);
     });
-})();
+}
+
+startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+});

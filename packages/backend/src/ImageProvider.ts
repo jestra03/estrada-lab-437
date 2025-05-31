@@ -1,14 +1,14 @@
-import { Collection, MongoClient } from "mongodb";
+import { MongoClient, Collection, ObjectId } from "mongodb";
 
 interface IImageDocument {
-    _id: string;
+    _id: ObjectId;
     src: string;
     name: string;
-    authorId: string;
+    authorId: ObjectId;
 }
 
 interface IUserDocument {
-    _id: string;
+    _id: ObjectId;
     username: string;
 }
 
@@ -29,24 +29,41 @@ export class ImageProvider {
         this.userCollection = db.collection<IUserDocument>(userColl);
     }
 
-    async getAllImagesDenormalized() {
-        const images = await this.imageCollection.find().toArray();
-        const authorIds = images.map((img) => img.authorId);
+    async getAllImagesDenormalized(nameQuery?: string) {
+        const query = nameQuery
+            ? { name: { $regex: nameQuery, $options: "i" } }
+            : {};
+
+        const images = await this.imageCollection.find(query).toArray();
+        const authorIds = images.map(img => img.authorId);
 
         const users = await this.userCollection.find({
             _id: { $in: authorIds }
         }).toArray();
 
-        const userMap = new Map(users.map((user) => [user._id, user]));
+        const userMap = new Map(users.map(user => [user._id.toString(), user]));
 
-        return images.map((img) => ({
-            id: img._id,
+        return images.map(img => ({
+            id: img._id.toString(),
             src: img.src,
             name: img.name,
             author: {
-                id: img.authorId,
-                username: userMap.get(img.authorId)?.username || "Unknown"
+                id: img.authorId.toString(),
+                username: userMap.get(img.authorId.toString())?.username || "Unknown"
             }
         }));
+    }
+
+    async updateImageName(imageId: string, newName: string): Promise<number> {
+        if (!ObjectId.isValid(imageId)) {
+            throw new Error("Invalid ID");
+        }
+
+        const result = await this.imageCollection.updateOne(
+            { _id: new ObjectId(imageId) },
+            { $set: { name: newName } }
+        );
+
+        return result.matchedCount;
     }
 }
