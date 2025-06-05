@@ -1,6 +1,6 @@
 // src/routes/imageRoutes.ts
 
-import express, { Request, Response } from "express";
+import express from "express";
 import { ImageProvider } from "../ImageProvider";
 import { ObjectId } from "mongodb";
 
@@ -10,11 +10,15 @@ import { ObjectId } from "mongodb";
  *     GET  /         → list or search images
  *     PATCH /:id     → update an image's name
  */
+function waitDuration(numMs: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, numMs));
+}
+
 export function createImageRouter(imageProvider: ImageProvider) {
     const router = express.Router();
 
     // 1) GET /api/images?name=optionalString
-    router.get("/", async (req: Request, res: Response) => {
+    router.get("/", async (req: any, res: any) => {
         // Read query parameter "name"
         const nameQuery = req.query.name;
         if (nameQuery !== undefined && typeof nameQuery !== "string") {
@@ -26,6 +30,7 @@ export function createImageRouter(imageProvider: ImageProvider) {
 
         try {
             const images = await imageProvider.getAllImagesDenormalized(nameQuery);
+            await waitDuration(1000);
             return res.json(images);
         } catch (err) {
             console.error("Failed to fetch images:", err);
@@ -34,7 +39,7 @@ export function createImageRouter(imageProvider: ImageProvider) {
     });
 
     // 2) PATCH /api/images/:id      { "name": "New Name" }
-    router.patch("/:id", async (req: Request, res: Response) => {
+    router.patch("/:id", async (req: any, res: any) => {
         const { id } = req.params;
         const { name } = req.body;
 
