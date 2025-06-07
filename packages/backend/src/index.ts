@@ -5,7 +5,10 @@ import * as dotenv from "dotenv";
 import path from "path";
 import { connectMongo } from "./connectMongo";
 import { ImageProvider } from "./ImageProvider";
+import { CredentialsProvider } from "./CredentialsProvider";
 import { createImageRouter } from "./routes/imageRoutes";
+import { createAuthRouter } from "./routes/authRoutes";
+import { verifyAuthToken } from "./middleware/authMiddleware";
 import { ValidRoutes } from "./shared/ValidRoutes";
 
 dotenv.config();
@@ -13,7 +16,8 @@ dotenv.config();
 // Validate required environment variables
 const requiredEnvVars = [
     'MONGO_USER', 'MONGO_PWD', 'MONGO_CLUSTER', 'DB_NAME',
-    'IMAGES_COLLECTION_NAME', 'USERS_COLLECTION_NAME', 'STATIC_DIR'
+    'IMAGES_COLLECTION_NAME', 'USERS_COLLECTION_NAME', 'CREDS_COLLECTION_NAME',
+    'STATIC_DIR', 'JWT_SECRET', 'IMAGE_UPLOAD_DIR'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -37,14 +41,30 @@ async function startServer() {
     const mongoClient = connectMongo();
     await mongoClient.connect();
     const imageProvider = new ImageProvider(mongoClient);
+    const credentialsProvider = new CredentialsProvider(mongoClient);
 
-    // 3) Mount API routes under /api/images
+    // 2.5) Store JWT secret in app.locals for middleware access
+    app.locals.JWT_SECRET = process.env.JWT_SECRET;
+
+    // 3) Mount auth routes (no authentication required)
+    app.use("/auth", createAuthRouter(credentialsProvider));
+
+    // 4) Apply authentication middleware to all /api/* routes
+    app.use("/api/*", verifyAuthToken);
+
+    // 5) Mount API routes under /api/images (now protected)
     app.use("/api/images", createImageRouter(imageProvider));
 
-    // 4) Serve static files from STATIC_DIR
+    // 6) Serve static files from STATIC_DIR
     app.use(express.static(STATIC_DIR));
 
-    // 5) SPA fallback: serve index.html for valid routes
+    // 6.5) Serve uploaded images
+    const IMAGE_UPLOAD_DIR = process.env.IMAGE_UPLOAD_DIR;
+    if (IMAGE_UPLOAD_DIR) {
+        app.use("/uploads", express.static(IMAGE_UPLOAD_DIR));
+    }
+
+    // 7) SPA fallback: serve index.html for valid routes
     const validRoutePaths = Object.values(ValidRoutes);
 
     for (const routePath of validRoutePaths) {
@@ -55,7 +75,7 @@ async function startServer() {
         }
     }
 
-    // 6) Catch-all for any other routes (404 for API, index.html for others)
+    // 8) Catch-all for any other routes (404 for API, index.html for others)
     app.get("*", ((req, res) => {
         if (req.path.startsWith("/api/")) {
             // If it's an undefined API path, return 404
@@ -66,7 +86,7 @@ async function startServer() {
         return res.sendFile(INDEX_HTML, { root: process.cwd() });
     }) as express.RequestHandler);
 
-    // 7) Start listening
+    // 9) Start listening
     app.listen(PORT, () => {
         console.log(`Server listening at http://localhost:${PORT}`);
     });

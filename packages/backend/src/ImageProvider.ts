@@ -12,6 +12,10 @@ interface IUserDocument {
     username: string;
 }
 
+function waitDuration(numMs: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, numMs));
+}
+
 export class ImageProvider {
     private imageCollection: Collection<IImageDocument>;
     private userCollection: Collection<IUserDocument>;
@@ -30,6 +34,9 @@ export class ImageProvider {
     }
 
     async getAllImagesDenormalized(nameQuery?: string) {
+        // Add 1-second delay as required by lab
+        await waitDuration(1000);
+
         const query = nameQuery
             ? { name: { $regex: nameQuery, $options: "i" } }
             : {};
@@ -54,6 +61,15 @@ export class ImageProvider {
         }));
     }
 
+    async getImageById(imageId: string) {
+        if (!ObjectId.isValid(imageId)) {
+            return null;
+        }
+
+        const image = await this.imageCollection.findOne({ _id: new ObjectId(imageId) });
+        return image;
+    }
+
     async updateImageName(imageId: string, newName: string): Promise<number> {
         if (!ObjectId.isValid(imageId)) {
             throw new Error("Invalid ID");
@@ -65,5 +81,34 @@ export class ImageProvider {
         );
 
         return result.matchedCount;
+    }
+
+    async getUserById(userId: string) {
+        if (!ObjectId.isValid(userId)) {
+            return null;
+        }
+        return await this.userCollection.findOne({ _id: new ObjectId(userId) });
+    }
+
+    async createImage(src: string, name: string, authorUsername: string): Promise<void> {
+        // For this lab, we'll fake the denormalization as suggested
+        // Instead of looking up the user, we'll create a fake user document
+        const fakeUserId = new ObjectId();
+
+        await this.imageCollection.insertOne({
+            _id: new ObjectId(),
+            src,
+            name,
+            authorId: fakeUserId
+        });
+
+        // Also insert a fake user document if it doesn't exist
+        const existingUser = await this.userCollection.findOne({ username: authorUsername });
+        if (!existingUser) {
+            await this.userCollection.insertOne({
+                _id: fakeUserId,
+                username: authorUsername
+            });
+        }
     }
 }

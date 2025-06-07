@@ -7,9 +7,10 @@ interface Props {
     loading: boolean;
     error: boolean;
     setImages: React.Dispatch<React.SetStateAction<IApiImageData[]>>;
+    authToken: string;
 }
 
-export function ImageDetails({ images, loading, error, setImages }: Props) {
+export function ImageDetails({ images, loading, error, setImages, authToken }: Props) {
     const { imageId } = useParams();
     const image = images.find((img) => img.id === imageId);
 
@@ -28,6 +29,7 @@ export function ImageDetails({ images, loading, error, setImages }: Props) {
                 initialValue={image.name}
                 imageId={image.id}
                 setImages={setImages}
+                authToken={authToken}
             />
         </div>
     );

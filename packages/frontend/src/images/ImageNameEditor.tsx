@@ -5,9 +5,10 @@ interface INameEditorProps {
     initialValue: string;
     imageId: string;
     setImages: (updater: (prev: any) => any) => void; // assumes lifted setImages is passed
+    authToken: string;
 }
 
-export function ImageNameEditor({ initialValue, imageId, setImages }: INameEditorProps) {
+export function ImageNameEditor({ initialValue, imageId, setImages, authToken }: INameEditorProps) {
     const [isEditingName, setIsEditingName] = useState(false);
     const [input, setInput] = useState(initialValue);
     const [working, setWorking] = useState(false);
@@ -18,11 +19,19 @@ export function ImageNameEditor({ initialValue, imageId, setImages }: INameEdito
         setError(false);
 
         try {
-            const res = await fetch("/api/images"); // fake fetch
+            const res = await fetch(`/api/images/${imageId}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ name: input })
+            });
+
             if (!res.ok) throw new Error("Bad response");
 
-            // Simulate update in parent state
-            setImages(prev =>
+            // Update in parent state
+            setImages((prev: IApiImageData[]) =>
                 prev.map((img: IApiImageData) =>
                     img.id === imageId ? { ...img, name: input } : img
                 )

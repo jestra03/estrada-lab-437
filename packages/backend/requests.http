@@ -1,37 +1,67 @@
-### Get all images
+### Test auth/register - Success case
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+### Test auth/register - Missing username (400)
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "password": "password123"
+}
+
+### Test auth/register - User already exists (409)
+POST http://localhost:3000/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+### Test auth/login - Success case
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+### Test auth/login - Wrong password (401)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "wrongpassword"
+}
+
+### Test auth/login - Missing password (400)
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser"
+}
+
+### Test protected route - No auth (401)
 GET http://localhost:3000/api/images
 
-### Search images by name
-GET http://localhost:3000/api/images?name=dog
+### Test protected route - With auth token (replace TOKEN_HERE with actual token)
+GET http://localhost:3000/api/images
+Authorization: Bearer TOKEN_HERE
 
-### Update image name (success case)
-PATCH http://localhost:3000/api/images/REPLACE_WITH_REAL_OBJECT_ID
+### Test image update - With auth token (replace TOKEN_HERE and IMAGE_ID)
+PATCH http://localhost:3000/api/images/IMAGE_ID
 Content-Type: application/json
+Authorization: Bearer TOKEN_HERE
 
 {
-  "name": "New Image Name"
-}
-
-### Update image name (invalid ID - should return 404)
-PATCH http://localhost:3000/api/images/invalid_id
-Content-Type: application/json
-
-{
-  "name": "New Name"
-}
-
-### Update image name (missing name - should return 400)
-PATCH http://localhost:3000/api/images/REPLACE_WITH_REAL_OBJECT_ID
-Content-Type: application/json
-
-{
-  "wrongField": "value"
-}
-
-### Update image name (name too long - should return 422)
-PATCH http://localhost:3000/api/images/REPLACE_WITH_REAL_OBJECT_ID
-Content-Type: application/json
-
-{
-  "name": "This is a very long name that exceeds the maximum allowed length of 100 characters and should trigger a 422 error response"
+  "name": "Updated Image Name"
 }
